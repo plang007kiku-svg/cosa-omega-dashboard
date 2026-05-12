@@ -2,3 +2,4 @@ streamlit
 pandas
 plotly
 OTXv2
+networkx
