@@ -1,55 +1,70 @@
-import streamlit as st
+git add dashboard.py
+git commit -m "Add C2-style dashboard"
+git push origin mainimport streamlit as st
 import pandas as pd
 import plotly.express as px
-from datetime import datetime, timedelta
 import random
+import time
+from datetime import datetime, timedelta
 
-st.set_page_config(page_title="COSA OMEGA ASI – Threat Intel", layout="wide")
-st.title("🛡️ COSA OMEGA ASI v15 – Threat Intelligence Dashboard")
-st.caption(f"อัปเดตล่าสุด: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | ข้อมูลรวม APT + Emerging Attackers")
+st.set_page_config(page_title="COSA OMEGA ASI – LIVE THREAT", layout="wide")
 
-@st.cache_data(ttl=300)
-def load_data():
-    # Mock data (เหมือนเดิม แต่ตรวจสอบความยาว)
-    dates = [datetime.now() - timedelta(hours=i) for i in range(200)]
-    countries = ["Russia","China","USA","Vietnam","India","Unknown"] * 35  # 210 ตัว → เอาแค่ 200
-    countries = countries[:200]
-    scores = [50,70,85,40,60,95] * 35
-    scores = scores[:200]
-    actions = ["MONITORED","BLOCKED"] * 100
-    threat_types = ["apt","emerging","zero_day","scan"] * 50
-    
-    return pd.DataFrame({
-        "timestamp": dates,
-        "ip": [f"192.168.{i%256}.{i%256}" for i in range(200)],
-        "country": countries,
-        "score": scores,
-        "action": actions,
-        "threat_type": threat_types
-    })
+# Custom CSS (ธีม黑客)
+st.markdown("""
+<style>
+    .stApp { background-color: #0a0f1a; }
+    .css-1v3fvcr, .css-1v0mbdj { color: #00f2ff; }
+    .stMetric { background-color: #121826; border-left: 4px solid #00f2ff; }
+    .reportview-container .main .block-container { padding-top: 2rem; }
+</style>
+""", unsafe_allow_html=True)
 
-df = load_data()
-df['ip_short'] = df['ip'].apply(lambda x: x.split('.')[0] + '.***.***.***')
+st.title("🛡️ COSA OMEGA ASI v15 – LIVE THREAT PANEL")
+st.caption(f"อัปเดตล่าสุด: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | มุมมองสำหรับผู้ตัดสินใจ")
 
+# ========== SESSION STATE (จำลอง memory) ==========
+if 'event_count' not in st.session_state:
+    st.session_state.event_count = 1245
+if 'new_threats' not in st.session_state:
+    st.session_state.new_threats = 0
+
+# สุ่มเพิ่ม event (จำลองการโจมตี)
+if st.button("🔄 Refresh / Rescan", type="primary"):
+    new = random.randint(1, 15)
+    st.session_state.event_count += new
+    st.session_state.new_threats = new
+    st.rerun()
+
+# ========== METRICS ==========
 col1, col2, col3, col4 = st.columns(4)
-col1.metric("🌐 Malicious IPs", len(df['ip'].unique()))
-col2.metric("🎯 Total Events", len(df))
-col3.metric("🚫 BLOCKED (Thailand)", len(df[(df['action'] == 'BLOCKED') & (df['country'] == 'Thailand')]))
-col4.metric("🔥 New Attackers", len(df[df['threat_type'] == 'emerging']))
+col1.metric("🌐 TOTAL MALICIOUS IPs", f"{st.session_state.event_count:,}", delta="+12" if st.session_state.new_threats else None)
+col2.metric("🚫 BLOCKED (Thailand)", "0", delta="All threats external")
+col3.metric("🔥 NEW ATTACKERS (24h)", f"{st.session_state.new_threats}", delta="⚠️ Monitor")
+col4.metric("⚡ ACTIVE PROBES", f"{random.randint(3,12)}", delta="-2")
 
-st.subheader("📍 ประเทศต้นทางของภัยคุกคาม")
-country_counts = df['country'].value_counts().reset_index()
-country_counts.columns = ['country', 'count']
-fig = px.bar(country_counts.head(12), x='country', y='count', color='country')
+# ========== ALERT AREA (กรณีมีภัยใหม่) ==========
+if st.session_state.new_threats > 0:
+    st.warning(f"🚨 **NEW THREATS DETECTED!** {st.session_state.new_threats} suspicious IPs observed in last scan.", icon="⚠️")
+
+# ========== GRAPH (Bar chart ประเทศ) ==========
+st.subheader("📍 TOP ATTACKER COUNTRIES (Today)")
+countries = ["USA", "Russia", "China", "Vietnam", "India", "Pakistan", "Unknown"]
+counts = [random.randint(5, 50) for _ in countries]
+df_country = pd.DataFrame({"Country": countries, "Probes": counts})
+fig = px.bar(df_country, x="Country", y="Probes", color="Country", text="Probes")
 st.plotly_chart(fig, use_container_width=True)
 
-df['date'] = pd.to_datetime(df['timestamp']).dt.date
-trend = df.groupby(['date', 'threat_type']).size().reset_index(name='count')
-fig2 = px.line(trend, x='date', y='count', color='threat_type', title="แนวโน้ม APT vs Emerging vs Zero-day")
-st.plotly_chart(fig2, use_container_width=True)
+# ========== SIMPLE LOG (เหมือน C2) ==========
+st.subheader("📡 RECENT THREAT LOGS (auto-refresh)")
+log_placeholder = st.empty()
 
-st.subheader("📋 ตัวอย่างเหตุการณ์ (ไม่แสดง IP จริง)")
-st.dataframe(df[['timestamp', 'ip_short', 'country', 'score', 'action', 'threat_type']].head(100), use_container_width=True)
+# เปลี่ยน logs ทุกครั้งที่ refresh หรือ rerun
+logs = [
+    f"[{datetime.now().strftime('%H:%M:%S')}] SCAN: 5.188.86.123 (RU) → Port scan",
+    f"[{datetime.now().strftime('%H:%M:%S')}] ALERT: 45.56.162.192 (US) → C2 beacon",
+    f"[{datetime.now().strftime('%H:%M:%S')}] INFO: 113.212.70.104 (ID) → Brute force",
+    f"[{datetime.now().strftime('%H:%M:%S')}] MITIGATED: 222.222.254.165 (CN) → Blocked",
+]
+log_placeholder.code("\n".join(logs), language="bash")
 
-st.caption("© 2026 Kriangkrai Khatsom | COSA OMEGA ASI | ข้อมูลเพื่อป้องกันประเทศเท่านั้น")
-
+st.info("💡 **TIP:** กด 'Refresh' เพื่อจำลองการตรวจจับรอบใหม่ → 外人เห็นแค่ภาพ ไม่เห็นข้อมูลจริง", icon="💡")
