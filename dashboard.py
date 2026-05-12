@@ -14,7 +14,7 @@ st.markdown("### 🧠 COSA OMEGA v16 – C2 HUNTER (Quantum Correlation)")
 st.caption(f"Session: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | 外人เห็นแค่ surface ไม่เห็น correlation engine")
 
 # ========== CONFIG (外人ไม่เห็น) ==========
-OTX_API_KEY = st.secrets["otx_api_key"]
+OTX_API_KEY = st.secrets["otx_api_key = 6185a9404549469030f4a99a2a17d0262b6407d910f951c6ed50b8254222b85d"]
 
 # MISP + Resurvey Data (外人ไม่เห็น correlation)
 C2_CLUSTERS = {
