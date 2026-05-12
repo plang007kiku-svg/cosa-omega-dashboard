@@ -1,0 +1,7 @@
+*.db
+*.json
+*.log
+*.pyc
+__pycache__/
+mesh_evidence/
+.env
