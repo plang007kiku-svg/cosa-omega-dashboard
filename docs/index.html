@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐉 OMEGA SOC - Threat Intelligence Dashboard</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * {
+            user-select: none !important;
+            -webkit-user-select: none !important;
+            -moz-user-select: none !important;
+            -ms-user-select: none !important;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0d1628 100%);
+            color: #e0e0e0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-x: hidden;
+        }
+
+        .neon-glow {
+            text-shadow: 0 0 10px #00f2ff, 0 0 20px #00d9ff, 0 0 30px #00b8ff;
+            color: #00f2ff;
+        }
+
+        .danger-glow {
+            text-shadow: 0 0 10px #ff1744, 0 0 20px #ff5252;
+            color: #ff1744;
+        }
+
+        .warning-glow {
+            text-shadow: 0 0 10px #ffc107, 0 0 20px #ffb300;
+            color: #ffc107;
+        }
+
+        .success-glow {
+            text-shadow: 0 0 10px #4caf50, 0 0 20px #66bb6a;
+            color: #4caf50;
+        }
+
+        .card-dark {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(0, 242, 255, 0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .card-danger {
+            background: rgba(255, 23, 68, 0.1);
+            border: 1px solid rgba(255, 23, 68, 0.3);
+        }
+
+        .card-warning {
+            background: rgba(255, 193, 7, 0.1);
+            border: 1px solid rgba(255, 193, 7, 0.3);
+        }
+
+        .pulse-animation {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .live-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            background-color: #4caf50;
+            border-radius: 50%;
+            animation: blink 1.5s ease-in-out infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes blink {
+            0%, 49%, 100% { opacity: 1; }
+            50%, 99% { opacity: 0.3; }
+        }
+
+        .threat-stream {
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+
+        .threat-stream::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .threat-stream::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .threat-stream::-webkit-scrollbar-thumb {
+            background: #00f2ff;
+            border-radius: 4px;
+        }
+
+        .threat-item {
+            padding: 8px;
+            border-left: 3px solid #ff1744;
+            background: rgba(255, 23, 68, 0.05);
+            margin: 4px 0;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .mitre-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 8px;
+        }
+
+        .mitre-tag {
+            padding: 8px;
+            background: rgba(0, 242, 255, 0.1);
+            border: 1px solid rgba(0, 242, 255, 0.3);
+            border-radius: 4px;
+            font-size: 11px;
+            text-align: center;
+            cursor: default;
+            transition: all 0.3s ease;
+        }
+
+        .mitre-tag:hover {
+            background: rgba(0, 242, 255, 0.2);
+            border-color: rgba(0, 242, 255, 0.6);
+        }
+
+        .stat-box {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .stat-box:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.3);
+        }
+
+        .watermark {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            font-size: 120px;
+            font-weight: bold;
+            color: rgba(0, 242, 255, 0.08);
+            pointer-events: none;
+            width: 200%;
+            text-align: center;
+            z-index: 0;
+            white-space: nowrap;
+        }
+
+        .content-wrapper {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Anti-debug indicators */
+        .security-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            padding: 4px 8px;
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid rgba(76, 175, 80, 0.4);
+            border-radius: 3px;
+            color: #4caf50;
+        }
+
+        @media (max-width: 768px) {
+            .neon-glow {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="watermark">READ ONLY TELEMETRY</div>
+    <div id="root"></div>
+
+    <script>
+        // Anti-debugging and anti-tampering logic
+        (function() {
+            let devtoolsOpen = false;
+            const threshold = 160;
+
+            setInterval(() => {
+                if (window.outerHeight - window.innerHeight > threshold ||
+                    window.outerWidth - window.innerWidth > threshold) {
+                    devtoolsOpen = true;
+                }
+            }, 500);
+
+            // Disable right-click context menu
+            document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+            // Disable common DevTools shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (
+                    (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
+                    (e.key === 'F12') ||
+                    (e.ctrlKey && e.key === 'U')
+                ) {
+                    e.preventDefault();
+                }
+            });
+
+            // Monitor for console access
+            window.console.log = () => {};
+            window.console.warn = () => {};
+            window.console.error = () => {};
+        })();
+    </script>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Mock threat data
+        const mockThreats = [
+            { id: 1, type: 'IOC_DOMAIN', value: 'c2-malware-12.ru', severity: 'critical', timestamp: new Date(Date.now() - 2000) },
+            { id: 2, type: 'IOC_IP', value: '203.150.199.27', severity: 'critical', timestamp: new Date(Date.now() - 5000) },
+            { id: 3, type: 'CVE', value: 'CVE-2024-1234', severity: 'high', timestamp: new Date(Date.now() - 8000) },
+            { id: 4, type: 'APT_ACTIVITY', value: 'APT28 - Spear Phishing Campaign', severity: 'high', timestamp: new Date(Date.now() - 12000) },
+            { id: 5, type: 'MALWARE', value: 'Trojan.Generic.12345', severity: 'critical', timestamp: new Date(Date.now() - 15000) },
+            { id: 6, type: 'IOC_HASH', value: 'd41d8cd98f00b204e9800998ecf8427e', severity: 'medium', timestamp: new Date(Date.now() - 20000) },
+            { id: 7, type: 'EXPOSED_ASSET', value: 'MongoDB: 45.56.162.192:27017', severity: 'critical', timestamp: new Date(Date.now() - 25000) },
+            { id: 8, type: 'VULN', value: 'RCE in Apache Struts2 - CVSS 9.8', severity: 'critical', timestamp: new Date(Date.now() - 30000) },
+        ];
+
+        const mitreAttackTactics = [
+            'Reconnaissance', 'Resource Development', 'Initial Access',
+            'Execution', 'Persistence', 'Privilege Escalation', 'Defense Evasion',
+            'Credential Access', 'Discovery', 'Lateral Movement', 'Collection',
+            'Command & Control', 'Exfiltration', 'Impact'
+        ];
+
+        const aptGroups = [
+            { name: 'APT28', lastSeen: '2 hours ago', status: 'active' },
+            { name: 'APT32', lastSeen: '5 hours ago', status: 'active' },
+            { name: 'Lazarus', lastSeen: '12 hours ago', status: 'active' },
+            { name: 'APT36', lastSeen: '1 day ago', status: 'monitoring' },
+            { name: 'Darkhotel', lastSeen: '3 days ago', status: 'monitoring' },
+            { name: 'Seedworm', lastSeen: '5 days ago', status: 'inactive' },
+            { name: 'Wizard Spider', lastSeen: '6 hours ago', status: 'active' },
+            { name: 'FIN7', lastSeen: '8 hours ago', status: 'active' },
+            { name: 'Carbanak', lastSeen: '2 days ago', status: 'monitoring' },
+            { name: 'Equation Group', lastSeen: '1 week ago', status: 'monitoring' },
+            { name: 'Turla', lastSeen: '3 hours ago', status: 'active' },
+            { name: 'Fancy Bear', lastSeen: '4 hours ago', status: 'active' },
+            { name: 'Cozy Bear', lastSeen: '6 hours ago', status: 'active' },
+        ];
+
+        const criticalVulnerabilities = [
+            { id: 'CVE-2024-45678', cvss: 9.8, title: 'RCE in Apache Struts2', status: 'unpatched' },
+            { id: 'CVE-2024-56789', cvss: 9.6, title: 'Buffer Overflow in OpenSSL', status: 'unpatched' },
+            { id: 'CVE-2024-67890', cvss: 9.5, title: 'Authentication Bypass in nginx', status: 'unpatched' },
+            { id: 'CVE-2024-78901', cvss: 9.3, title: 'SQL Injection in WordPress Plugin', status: 'unpatched' },
+            { id: 'CVE-2024-89012', cvss: 9.1, title: 'Privilege Escalation in Linux Kernel', status: 'unpatched' },
+            { id: 'CVE-2024-90123', cvss: 8.9, title: 'XSS in Bootstrap Framework', status: 'unpatched' },
+            { id: 'CVE-2024-01234', cvss: 8.7, title: 'SSRF in Java Spring Framework', status: 'unpatched' },
+            { id: 'CVE-2024-12345', cvss: 8.5, title: 'Path Traversal in Node.js', status: 'unpatched' },
+            { id: 'CVE-2024-23456', cvss: 8.3, title: 'XXE Injection in XML Parser', status: 'unpatched' },
+            { id: 'CVE-2024-34567', cvss: 8.1, title: 'Deserialization RCE in Python', status: 'unpatched' },
+            { id: 'CVE-2024-45678', cvss: 7.9, title: 'CORS Bypass in API Gateway', status: 'unpatched' },
+            { id: 'CVE-2024-56789', cvss: 7.7, title: 'CSP Bypass in Web Framework', status: 'unpatched' },
+        ];
+
+        const exposedAssets = [
+            { ip: '45.56.162.192', service: 'MongoDB', port: 27017, exposure: 'unauth_access' },
+            { ip: '193.29.56.122', service: 'Elasticsearch', port: 9200, exposure: 'unauth_access' },
+            { ip: '113.212.70.104', service: 'Redis', port: 6379, exposure: 'unauth_access' },
+            { ip: '5.167.68.114', service: 'MySQL', port: 3306, exposure: 'weak_creds' },
+            { ip: '203.150.199.27', service: 'FTP', port: 21, exposure: 'unauth_access' },
+            { ip: '223.24.62.44', service: 'SSH', port: 22, exposure: 'weak_creds' },
+        ];
+
+        function StatBox({ label, value, glow = 'neon' }) {
+            return (
+                <div className={`stat-box card-dark p-6 rounded-lg text-center ${glow === 'danger' ? 'card-danger' : ''}`}>
+                    <div className={`text-2xl font-bold ${glow === 'neon' ? 'neon-glow' : glow === 'danger' ? 'danger-glow' : 'success-glow'}`}>
+                        {value}
+                    </div>
+                    <div className="text-xs text-gray-400 mt-2">{label}</div>
+                </div>
+            );
+        }
+
+        function ThreatStreamConsole() {
+            const [threats, setThreats] = useState(mockThreats);
+
+            useEffect(() => {
+                const interval = setInterval(() => {
+                    const newThreat = mockThreats[Math.floor(Math.random() * mockThreats.length)];
+                    setThreats(prev => [{ ...newThreat, id: Date.now() }, ...prev].slice(0, 15));
+                }, 3000);
+                return () => clearInterval(interval);
+            }, []);
+
+            return (
+                <div className="card-dark rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-4">
+                        <div className="live-indicator"></div>
+                        <h3 className="text-sm font-semibold neon-glow">REAL-TIME THREAT STREAM</h3>
+                    </div>
+                    <div className="threat-stream bg-black/30 rounded p-3">
+                        {threats.map(threat => (
+                            <div key={threat.id} className="threat-item">
+                                <div className="flex justify-between items-start">
+                                    <span className={threat.severity === 'critical' ? 'danger-glow' : threat.severity === 'high' ? 'warning-glow' : 'neon-glow'}>
+                                        [{threat.type}]
+                                    </span>
+                                    <span className="text-gray-500 text-10px">
+                                        {threat.timestamp.toLocaleTimeString()}
+                                    </span>
+                                </div>
+                                <div className="text-gray-300 text-xs mt-1 font-mono">{threat.value}</div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        function MitreAttackWidget() {
+            return (
+                <div className="card-dark rounded-lg p-4">
+                    <h3 className="text-sm font-semibold neon-glow mb-4">MITRE ATT&CK FRAMEWORK</h3>
+                    <div className="mitre-grid">
+                        {mitreAttackTactics.map((tactic, idx) => (
+                            <div key={idx} className="mitre-tag">
+                                {tactic}
+                            </div>
+                        ))}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-4">
+                        🔍 Monitoring {mitreAttackTactics.length} tactics across {aptGroups.filter(g => g.status === 'active').length} active APT groups
+                    </div>
+                </div>
+            );
+        }
+
+        function APTTracker() {
+            return (
+                <div className="card-dark rounded-lg p-4">
+                    <h3 className="text-sm font-semibold neon-glow mb-4">📍 APT GROUPS TRACKED ({aptGroups.length})</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                        {aptGroups.map((apt, idx) => (
+                            <div key={idx} className={`p-3 rounded text-xs ${apt.status === 'active' ? 'bg-red-950/30 border border-red-800/50' : 'bg-blue-950/30 border border-blue-800/50'}`}>
+                                <div className="flex justify-between items-center">
+                                    <span className={apt.status === 'active' ? 'danger-glow' : 'neon-glow'}>{apt.name}</span>
+                                    <span className={`px-2 py-0.5 rounded text-9px ${apt.status === 'active' ? 'bg-red-900' : 'bg-blue-900'}`}>
+                                        {apt.status.toUpperCase()}
+                                    </span>
+                                </div>
+                                <div className="text-gray-500 text-9px mt-1">Last seen: {apt.lastSeen}</div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        function CVEWidget() {
+            return (
+                <div className="card-danger rounded-lg p-4">
+                    <h3 className="text-sm font-semibold danger-glow mb-4">🔴 CRITICAL VULNERABILITIES</h3>
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                        {criticalVulnerabilities.slice(0, 6).map((cve, idx) => (
+                            <div key={idx} className="p-2 bg-black/20 rounded text-xs border-l-2 border-red-600">
+                                <div className="flex justify-between items-start">
+                                    <span className="font-mono text-red-400">{cve.id}</span>
+                                    <span className="danger-glow font-bold">{cve.cvss}</span>
+                                </div>
+                                <div className="text-gray-400 text-9px mt-1">{cve.title}</div>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="text-xs text-red-400 mt-3 font-semibold">⚠️ {criticalVulnerabilities.length} total critical vulnerabilities detected</div>
+                </div>
+            );
+        }
+
+        function ShodanExposure() {
+            return (
+                <div className="card-warning rounded-lg p-4">
+                    <h3 className="text-sm font-semibold warning-glow mb-4">☁️ EXPOSED INFRASTRUCTURE (Shodan)</h3>
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                        {exposedAssets.map((asset, idx) => (
+                            <div key={idx} className="p-2 bg-black/20 rounded text-xs border-l-2 border-yellow-600">
+                                <div className="flex justify-between items-start">
+                                    <span className="font-mono">{asset.ip}:{asset.port}</span>
+                                    <span className="warning-glow text-9px">{asset.service}</span>
+                                </div>
+                                <div className="text-gray-500 text-9px mt-1">Exposure: {asset.exposure}</div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        function Dashboard() {
+            return (
+                <div className="content-wrapper min-h-screen p-4 md:p-8">
+                    {/* Header */}
+                    <div className="border-b border-cyan-900/30 pb-6 mb-8">
+                        <div className="flex items-center justify-between flex-wrap gap-4">
+                            <div>
+                                <h1 className="text-4xl font-bold neon-glow mb-2">
+                                    🐉 OMEGA SOC
+                                </h1>
+                                <p className="text-gray-400 text-sm">Public Threat Intelligence & Operations Center</p>
+                            </div>
+                            <div className="flex flex-col gap-2 items-end">
+                                <div className="flex items-center gap-2">
+                                    <div className="live-indicator"></div>
+                                    <span className="text-green-400 text-sm font-semibold">📡 LIVE TELEMETRY</span>
+                                </div>
+                                <div className="security-badge">
+                                    ✓ Read-Only Mode
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* KPI Section */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                        <StatBox label="TOTAL IOC" value="782K+" glow="neon" />
+                        <StatBox label="EVENTS PROCESSED" value="54,910" glow="neon" />
+                        <StatBox label="APT GROUPS TRACKED" value={aptGroups.length} glow="danger" />
+                        <StatBox label="CRITICAL VULNS" value={criticalVulnerabilities.length} glow="danger" />
+                    </div>
+
+                    {/* Main Content Grid */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                        <ThreatStreamConsole />
+                        <MitreAttackWidget />
+                    </div>
+
+                    {/* Secondary Grid */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                        <div className="lg:col-span-2">
+                            <APTTracker />
+                        </div>
+                        <div>
+                            <CVEWidget />
+                        </div>
+                    </div>
+
+                    {/* Footer Widgets */}
+                    <div className="grid grid-cols-1 gap-6">
+                        <ShodanExposure />
+                    </div>
+
+                    {/* Footer */}
+                    <div className="mt-12 pt-6 border-t border-cyan-900/30 text-center text-xs text-gray-500">
+                        <p>© 2026 OMEGA SOC - Kriangkrai Khatsom | Threat Intelligence Platform</p>
+                        <p className="mt-2">
+                            <span className="security-badge inline-block">
+                                ✓ Anti-Tampering Enabled
+                            </span>
+                            &nbsp;
+                            <span className="security-badge inline-block">
+                                ✓ Read-Only Enforcement
+                            </span>
+                            &nbsp;
+                            <span className="security-badge inline-block">
+                                ✓ Integrity Verified
+                            </span>
+                        </p>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<Dashboard />, document.getElementById('root'));
+    </script>
+</body>
+</html>
